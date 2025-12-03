@@ -1,0 +1,31 @@
+Package: osrm.backend
+Title: Bindings for 'Open Source Routing Machine'
+Version: 0.1.0
+Authors@R: 
+    person("Egor", "Kotov", , "kotov.egor@gmail.com", role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0001-6690-5345"))
+Description: Install and control 'Open Source Routing Machine' ('OSRM')
+    backend executables to prepare routing data and run/stop a local
+    'OSRM' server. For computations with the running server use the 'osrm'
+    R package (<https://cran.r-project.org/package=osrm>).
+License: MIT + file LICENSE
+URL: https://github.com/e-kotov/osrm.backend,
+        https://www.ekotov.pro/osrm.backend/
+BugReports: https://github.com/e-kotov/osrm.backend/issues
+Imports: digest, httr2, jsonlite, processx, ps
+Suggests: knitr, osrm, quarto, sf, testthat (>= 3.0.0)
+VignetteBuilder: quarto
+Config/testthat/edition: 3
+Encoding: UTF-8
+Language: en
+RoxygenNote: 7.3.3
+SystemRequirements: OSRM backend binaries (>= v5.27.0)
+        <https://github.com/Project-OSRM/osrm-backend>; package
+        downloads binaries automatically if not found
+NeedsCompilation: no
+Packaged: 2025-11-28 13:24:05 UTC; ek
+Author: Egor Kotov [aut, cre, cph] (ORCID:
+    <https://orcid.org/0000-0001-6690-5345>)
+Maintainer: Egor Kotov <kotov.egor@gmail.com>
+Repository: CRAN
+Date/Publication: 2025-12-03 21:00:02 UTC
