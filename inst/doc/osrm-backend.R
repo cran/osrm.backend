@@ -1,60 +1,46 @@
 ## -----------------------------------------------------------------------------
-#| label: setup
+knitr::opts_chunk$set(eval = FALSE)
 library(osrm.backend)
 library(osrm)
 library(sf)
 
+## -----------------------------------------------------------------------------
+# osrm_temp_dir <- file.path(tempdir(), paste0("osrm-data-", Sys.getpid()))
+# dir.create(osrm_temp_dir, showWarnings = FALSE, recursive = TRUE)
+# internal_pbf <- system.file("extdata/cur.osm.pbf", package = "osrm.backend")
+# file.copy(from = internal_pbf, to = osrm_temp_dir)
 
 ## -----------------------------------------------------------------------------
-#| label: create-temp-dir
-osrm_temp_dir <- file.path(tempdir(), paste0("osrm-data-", Sys.getpid()))
-dir.create(osrm_temp_dir, showWarnings = FALSE, recursive = TRUE)
-internal_pbf <- system.file("extdata/cur.osm.pbf", package = "osrm.backend")
-file.copy(from = internal_pbf, to = osrm_temp_dir)
-
+# osrm_start(osrm_temp_dir, verbose = TRUE)
 
 ## -----------------------------------------------------------------------------
-#| label: start-osrm-server
-osrm_start(osrm_temp_dir, verbose = TRUE)
-
-
-## -----------------------------------------------------------------------------
-# read the pbf file with sf
-osm_points <- read_sf(internal_pbf, layer = "points")
-osm_streets <- read_sf(internal_pbf, layer = "multilinestrings")
-
-set.seed(100)
-sampled_points <- osm_points[sample(nrow(osm_points), 2), ]
-
+# # read the pbf file with sf
+# osm_points <- read_sf(internal_pbf, layer = "points")
+# osm_streets <- read_sf(internal_pbf, layer = "multilinestrings")
+# 
+# set.seed(100)
+# sampled_points <- osm_points[sample(nrow(osm_points), 2), ]
 
 ## -----------------------------------------------------------------------------
-#| label: osrm-route
-options("osrm.server" = "http://localhost:5001/")
-route <- osrm::osrmRoute(loc = sampled_points)
-route
-
+# options("osrm.server" = "http://localhost:5001/")
+# route <- osrm::osrmRoute(loc = sampled_points)
+# route
 
 ## -----------------------------------------------------------------------------
-plot(st_geometry(osm_streets), lwd = 0.5, col = "grey70")
-plot(st_geometry(route), col = "red", lwd = 5, add = TRUE)
-
-
-## -----------------------------------------------------------------------------
-#| echo: false
-# in this block create same plot as above but save it to a png file
-dir.create("./man/figures", showWarnings = FALSE, recursive = TRUE)
-png("./man/figures/example-route.png", width = 800, height = 600)
-plot(st_geometry(osm_streets), lwd = 0.5, col = "grey70")
-plot(st_geometry(route), col = "red", lwd = 5, add = TRUE)
-dev.off()
-
+# plot(st_geometry(osm_streets), lwd = 0.5, col = "grey70")
+# plot(st_geometry(route), col = "red", lwd = 5, add = TRUE)
 
 ## -----------------------------------------------------------------------------
-#| label: stop-osrm-server
-osrm_stop()
-
+# # in this block create same plot as above but save it to a png file
+# dir.create("./man/figures", showWarnings = FALSE, recursive = TRUE)
+# png("./man/figures/example-route.png", width = 800, height = 600)
+# plot(st_geometry(osm_streets), lwd = 0.5, col = "grey70")
+# plot(st_geometry(route), col = "red", lwd = 5, add = TRUE)
+# dev.off()
 
 ## -----------------------------------------------------------------------------
-#| label: remove-temp-dir
-unlink(osrm_temp_dir, recursive = TRUE)
+# osrm_stop()
+
+## -----------------------------------------------------------------------------
+# unlink(osrm_temp_dir, recursive = TRUE)
 
