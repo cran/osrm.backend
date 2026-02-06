@@ -1,6 +1,6 @@
 Package: osrm.backend
 Title: Bindings for 'Open Source Routing Machine'
-Version: 0.1.1
+Version: 0.2.0
 Authors@R: 
     person("Egor", "Kotov", , "kotov.egor@gmail.com", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0001-6690-5345"))
@@ -23,9 +23,9 @@ SystemRequirements: OSRM backend binaries (>= v5.27.0)
         <https://github.com/Project-OSRM/osrm-backend>; package
         downloads binaries automatically if not found
 NeedsCompilation: no
-Packaged: 2025-12-05 16:48:42 UTC; ek
+Packaged: 2026-02-06 20:41:33 UTC; ek
 Author: Egor Kotov [aut, cre, cph] (ORCID:
     <https://orcid.org/0000-0001-6690-5345>)
 Maintainer: Egor Kotov <kotov.egor@gmail.com>
 Repository: CRAN
-Date/Publication: 2025-12-07 01:00:02 UTC
+Date/Publication: 2026-02-06 21:30:02 UTC

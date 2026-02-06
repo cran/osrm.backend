@@ -1,7 +1,7 @@
-83a20dd6a8f6c96a1546ac275e6cfd91 *DESCRIPTION
+37c64cfd6348285743516a9b973da2bb *DESCRIPTION
 e991a381440442e8e629b8b57c7bef10 *LICENSE
 2ac23afb3b9ef7af9beb0d190bf04ee3 *NAMESPACE
-dbd41e87e0c8b376929e78d6e2f98547 *NEWS.md
+cc6a2950bc717e63ce650bcfa694fa76 *NEWS.md
 db3c21e2cf7acfaa10f7174f54bd8fcd *R/osrm_cleanup.R
 cb709757ab259fa2a8bddfb4e7060d67 *R/osrm_contract.R
 4dc736eeecf4339e7389229d5ef179f2 *R/osrm_customize.R
@@ -10,10 +10,10 @@ c955b73afd5588647ee3de8db1bf9ee8 *R/osrm_extract.R
 eaab34fad3214c472cf81f1ee5cf80fb *R/osrm_install.R
 7cceafaea6304cf1a81fdd26ce61524e *R/osrm_partition.R
 816702dc98715ae3b13a8ab3dbff5007 *R/osrm_prepare_graph.R
-4264c61ad6576ae7156ac62bf94ed037 *R/osrm_server_registry.R
+bb2883724c192dcdbe58c91a285cc3cd *R/osrm_server_registry.R
 dfd15062a2e141c854a0007e88209118 *R/osrm_start.R
-c1c3822017f4e7f8b6c9cb069e455638 *R/osrm_start_server.R
-339d66f865a76e10774ff3c799b4b4fd *R/osrm_stop_server.R
+57cd1e4cf9773cb1b6821ddecc75b19c *R/osrm_start_server.R
+8db8459ad8b49877e2049c59a5c36be0 *R/osrm_stop_server.R
 aa288b4fd93862e72b581eca6c40af17 *R/osrm_uninstall.R
 379554da52ad171cb033a48a28031148 *R/osrm_which.R
 03d187ffdea2b4b7d67c2bdb42388970 *R/utils.R
@@ -37,9 +37,9 @@ c4e30c5dfa2a59c8101656070a47c5a6 *man/osrm_check_latest_version.Rd
 96d4227b3d3d80c3aefaf8008a8eb906 *man/osrm_install.Rd
 e7415e332c8af6e993d7e3a89e4b7c66 *man/osrm_partition.Rd
 ea25a30c485503ce4c6aaeab9278366e *man/osrm_prepare_graph.Rd
-09fb199011195722cf575a00e76fb662 *man/osrm_servers.Rd
+8b2f07c8443127173309f252b39304ce *man/osrm_servers.Rd
 18db6209548af8c8057f80f3c8385300 *man/osrm_start.Rd
-a1b24dd13a83fb3dbbc06d0912169b2b *man/osrm_start_server.Rd
+af0c5fa6b811e71f0ca1409e9056920e *man/osrm_start_server.Rd
 f4a95e09ad1569b0fbb952170a848a05 *man/osrm_stop.Rd
 e59a7a9e1f0688b3514cdf53013e90b1 *man/osrm_stop_all.Rd
 5717bf9a8ce2c2e2b66c38197a96c062 *man/osrm_uninstall.Rd
@@ -55,7 +55,7 @@ a8821b438fe9d55192ae8ccd40f892dd *tests/testthat/test-osrm_install.R
 9f16fa99d428398cc3cb309779bdbc23 *tests/testthat/test-osrm_partition.R
 a22bcd235f1b5e72ef1e2a99574bce68 *tests/testthat/test-osrm_pipelines.R
 b6b3faf8a1878c95022641ca38360c96 *tests/testthat/test-osrm_prepare_graph.R
-ab75840ad2ce5bc9c8dd04ee3f873467 *tests/testthat/test-osrm_server.R
+4ae4710402c1ad8e08db61341ad631f7 *tests/testthat/test-osrm_server.R
 e5f4bed926287b8504c793b9646a736e *tests/testthat/test-osrm_start.R
 dfe7293542dd354becc359fc0911e711 *tests/testthat/test-osrm_uninstall.R
 0f908fb33e038a83122f25c8f0782a7c *tests/testthat/test-osrm_which.R
