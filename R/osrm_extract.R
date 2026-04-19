@@ -1,5 +1,8 @@
 #' Extract OSM into OSRM Graph Files
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' Run the `osrm-extract` tool to preprocess an OSM file
 #' (`.osm`, `.osm.bz2`, or `.osm.pbf`) into the base `.osrm` graph files
 #' using a specified Lua profile.  After running, a companion
@@ -147,13 +150,18 @@ osrm_extract <- function(
     pattern = paste0("^", basename(base), ".*\\.osrm"),
     ignore.case = TRUE
   )
-  if (length(existing) > 0 && !overwrite) {
-    stop(
-      "Found existing OSRM files: ",
-      paste(existing, collapse = ", "),
-      ".\nSet overwrite = TRUE to proceed.",
-      call. = FALSE
-    )
+  if (length(existing) > 0) {
+    if (!overwrite) {
+      stop(
+        "Found existing OSRM files: ",
+        paste(existing, collapse = ", "),
+        ".\nSet overwrite = TRUE to proceed.",
+        call. = FALSE
+      )
+    } else {
+      if (!quiet) message("Existing OSRM files found. Cleaning up...")
+      osrm_cleanup(base, quiet = quiet)
+    }
   }
 
   # build command arguments
@@ -215,6 +223,21 @@ osrm_extract <- function(
       call. = FALSE
     )
   }
+
+  # --- WRITE METADATA ---
+  # Determine profile name: "path/to/car.lua" -> "car"
+  profile_name <- tools::file_path_sans_ext(basename(profile))
+  
+  meta_file <- file.path(dirname(base), "dataset.meta.json")
+  meta_data <- list(
+    profile = profile_name,
+    created_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    input_osm = basename(input_osm)
+  )
+  try(
+    jsonlite::write_json(meta_data, meta_file, auto_unbox = TRUE, pretty = TRUE), 
+    silent = TRUE
+  )
 
   # Accumulate logs from previous stages
   accumulated_logs <- c(input_logs, list(extract = logs))

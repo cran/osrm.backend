@@ -2,17 +2,35 @@
 % Please edit documentation in R/osrm_stop_server.R
 \name{osrm_servers}
 \alias{osrm_servers}
-\title{List OSRM servers started via this package}
+\title{List OSRM servers}
 \usage{
-osrm_servers()
+osrm_servers(include_all = FALSE, output = c("data.frame", "list"))
+}
+\arguments{
+\item{include_all}{Logical; if \code{TRUE}, scans the system process table for
+all \code{osrm-routed} processes, including those not started by this package
+in the current session. Default is \code{FALSE}.}
+
+\item{output}{Character string specifying the return format. Either \code{"data.frame"}
+(the default) which returns a tabular summary with a custom print method,
+or \code{"list"} which returns a detailed list of server metadata objects.}
 }
 \value{
-A data.frame with columns:
-\code{id}, \code{pid}, \code{port}, \code{algorithm}, \code{started_at}, \code{alive}, \code{has_handle}, \code{log}.
+If \code{output = "data.frame"}, returns a \code{data.frame} (class \code{osrm_server_list})
+of OSRM job processes with columns:
+\code{id}, \code{pid}, \code{port}, \code{algorithm}, \code{started_at}, \code{alive}, \code{has_handle}, \code{log}, \code{input_osm},
+\code{center_lon}, \code{center_lat}. External servers will have \code{id} prefixed with \verb{sys-} and
+\code{log} set to \verb{<external>}. If \code{output = "list"}, returns a named list of server metadata.
 }
 \description{
-Returns a snapshot of servers registered by \code{\link[=osrm_start_server]{osrm_start_server()}} or \code{\link[=osrm_start]{osrm_start()}}.
-You can stop one by passing its \code{id}, \code{port}, or \code{pid} to \code{\link[=osrm_stop]{osrm_stop()}}.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
+Lists \code{osrm-routed} processes. By default, it returns a snapshot of servers
+started by the current R session (registered via \code{\link[=osrm_start_server]{osrm_start_server()}} or \code{\link[=osrm_start]{osrm_start()}}).
+You can optionally list all \code{osrm-routed} processes running on the system,
+including those started by other sessions or manually.
+
+You can stop a server by passing its \code{id}, \code{port}, or \code{pid} to \code{\link[=osrm_stop]{osrm_stop()}}.
 }
 \examples{
 \donttest{

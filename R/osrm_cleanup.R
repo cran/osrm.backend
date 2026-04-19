@@ -1,5 +1,8 @@
 #' Clean Up OSRM Files in a Directory
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' Remove OSRM-generated files from a directory. This is useful when switching
 #' between algorithms (CH and MLD) or when you want to start fresh.
 #'
@@ -74,7 +77,12 @@ osrm_cleanup <- function(
   }
 
   if (!file.exists(path) && !dir.exists(path)) {
-    stop("Path does not exist: ", path, call. = FALSE)
+    # If the exact path doesn't exist, we check if the parent directory exists.
+    # This allows us to use osrm_cleanup with a base_name prefix.
+    parent_dir <- dirname(path)
+    if (!dir.exists(parent_dir)) {
+      stop("Directory does not exist: ", parent_dir, call. = FALSE)
+    }
   }
 
   # Determine directory and base name
@@ -120,12 +128,9 @@ osrm_cleanup <- function(
     } else if (grepl("\\.osrm\\.", file_name)) {
       base_name <- sub("\\.osrm\\..*$", "", file_name)
     } else {
-      stop(
-        "Cannot determine base name from file: ",
-        file_name,
-        "\nExpected .osm.pbf, .osm, .osm.bz2, or .osrm.* file",
-        call. = FALSE
-      )
+      # If no extension is recognized, assume the file_name itself is the base_name
+      # This is useful when called with a prefix from other functions.
+      base_name <- file_name
     }
   }
 

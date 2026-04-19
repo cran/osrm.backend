@@ -64,6 +64,17 @@ test_that("osrm_start_server launches osrm-routed with correct arguments", {
     }
   )
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       server <- osrm_start_server(
@@ -84,9 +95,6 @@ test_that("osrm_start_server launches osrm-routed with correct arguments", {
   expect_true("-p" %in% captured$args && "5002" %in% captured$args)
   expect_true("-t" %in% captured$args && "4" %in% captured$args)
   expect_true("--max-table-size" %in% captured$args && "500" %in% captured$args)
-
-  # Clean up registry
-  osrm_stop(server, quiet = TRUE)
 })
 
 test_that("osrm_start_server validates input file extension", {
@@ -113,9 +121,10 @@ test_that("osrm_stop handles stopping by object, id, port, and pid", {
     "server2" = list(id = "server2", pid = 1002L, port = 5002L, proc = NULL)
   )
 
-  # Mock internal functions
-  mock_state <- new.env()
-  mock_state$registry <- mock_reg
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  on.exit(state_env$registry <- orig_registry, add = TRUE)
+  state_env$registry <- mock_reg
 
   with_mocked_bindings(
     {
@@ -133,7 +142,6 @@ test_that("osrm_stop handles stopping by object, id, port, and pid", {
         "Could not identify a server"
       )
     },
-    .osrm_state = mock_state,
     .osrm_deregister = function(...) TRUE,
     .osrm_pid_is_running = function(...) TRUE,
     .osrm_kill_pid = function(...) TRUE
@@ -147,31 +155,30 @@ test_that("osrm_servers returns empty data frame when no servers", {
     "Requires testthat >= 3.2.0 for object mocking"
   )
 
-  mock_state <- new.env()
-  mock_state$registry <- list()
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  on.exit(state_env$registry <- orig_registry, add = TRUE)
+  state_env$registry <- list()
 
-  with_mocked_bindings(
-    {
-      result <- osrm_servers()
+  result <- osrm_servers()
 
-      expect_s3_class(result, "data.frame")
-      expect_equal(nrow(result), 0)
-      expect_named(
-        result,
-        c(
-          "id",
-          "pid",
-          "port",
-          "algorithm",
-          "started_at",
-          "alive",
-          "has_handle",
-          "log"
-        )
-      )
-    },
-    .osrm_state = mock_state
-  )
+  expect_s3_class(result, "data.frame")
+  expect_equal(nrow(result), 0)
+  expect_named(
+    result,
+    c(
+      "id",
+      "pid",
+      "port",
+      "algorithm",
+      "started_at",
+      "alive",
+      "has_handle",
+      "log",
+      "input_osm",
+      "center_lon",
+      "center_lat"
+      ))
 })
 
 test_that("osrm_servers returns server information correctly", {
@@ -186,14 +193,14 @@ test_that("osrm_servers returns server information correctly", {
   )
   class(mock_proc) <- c("process", "list")
 
-  mock_state <- new.env()
-  mock_state$registry <- list(
+  mock_reg <- list(
     "server1" = list(
       id = "server1",
       pid = 1001L,
       port = 5001L,
       algorithm = "mld",
       started_at = "2025-01-01T12:00:00.000Z",
+      input_osm = "data1.osm.pbf",
       proc = mock_proc
     ),
     "server2" = list(
@@ -202,9 +209,15 @@ test_that("osrm_servers returns server information correctly", {
       port = 5002L,
       algorithm = "ch",
       started_at = "2025-01-01T12:00:01.000Z",
+      input_osm = "data2.osm.pbf",
       proc = NULL
     )
   )
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  on.exit(state_env$registry <- orig_registry, add = TRUE)
+  state_env$registry <- mock_reg
 
   with_mocked_bindings(
     {
@@ -215,10 +228,10 @@ test_that("osrm_servers returns server information correctly", {
       expect_equal(result$pid, c(1001L, 1002L))
       expect_equal(result$port, c(5001L, 5002L))
       expect_equal(result$algorithm, c("mld", "ch"))
+      expect_equal(result$input_osm, c("data1.osm.pbf", "data2.osm.pbf"))
       expect_true(result$has_handle[1])
       expect_false(result$has_handle[2])
     },
-    .osrm_state = mock_state,
     .osrm_pid_is_running = function(...) TRUE
   )
 })
@@ -230,11 +243,15 @@ test_that("osrm_stop_all stops all servers", {
     "Requires testthat >= 3.2.0 for object mocking"
   )
 
-  mock_state <- new.env()
-  mock_state$registry <- list(
+  mock_reg <- list(
     "server1" = list(id = "server1", pid = 1001L, port = 5001L, proc = NULL),
     "server2" = list(id = "server2", pid = 1002L, port = 5002L, proc = NULL)
   )
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  on.exit(state_env$registry <- orig_registry, add = TRUE)
+  state_env$registry <- mock_reg
 
   stop_calls <- character()
 
@@ -245,7 +262,6 @@ test_that("osrm_stop_all stops all servers", {
       expect_equal(result, 2L)
       expect_length(stop_calls, 2)
     },
-    .osrm_state = mock_state,
     osrm_stop = function(id, quiet) {
       stop_calls <<- c(stop_calls, id)
       list(id = id, stopped = TRUE)
@@ -259,16 +275,13 @@ test_that("osrm_stop_all returns 0 when no servers", {
     "Requires testthat >= 3.2.0 for object mocking"
   )
 
-  mock_state <- new.env()
-  mock_state$registry <- list()
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  on.exit(state_env$registry <- orig_registry, add = TRUE)
+  state_env$registry <- list()
 
-  with_mocked_bindings(
-    {
-      result <- osrm_stop_all()
-      expect_equal(result, 0L)
-    },
-    .osrm_state = mock_state
-  )
+  result <- osrm_stop_all()
+  expect_equal(result, 0L)
 })
 
 # Tests for server registry internal functions ----
@@ -283,9 +296,16 @@ test_that("registry saves and loads correctly", {
   dir.create(tmp_dir, recursive = TRUE)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
-  # Create a mock state with registry
-  mock_state <- new.env()
-  mock_state$registry <- list(
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$session_id <- "session-test-12345"
+  state_env$registry <- list(
     "test-server" = list(
       id = "test-server",
       pid = 1234L,
@@ -302,7 +322,7 @@ test_that("registry saves and loads correctly", {
       .osrm_registry_save()
 
       # Check file exists
-      registry_path <- file.path(tmp_dir, "servers.json")
+      registry_path <- file.path(tmp_dir, "session-test-12345.json")
       expect_true(file.exists(registry_path))
 
       # Test load
@@ -313,7 +333,6 @@ test_that("registry saves and loads correctly", {
       expect_true("test-server" %in% names(.osrm_state$registry))
       expect_equal(.osrm_state$registry$`test-server`$pid, 1234L)
     },
-    .osrm_state = mock_state,
     .osrm_registry_dir = function() tmp_dir,
     .osrm_cleanup_orphans = function() invisible(NULL)
   )
@@ -361,6 +380,17 @@ test_that("osrm_start_server accepts dataset_name parameter", {
     }
   )
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       server <- osrm_start_server(
@@ -407,6 +437,17 @@ test_that("osrm_start_server handles max size parameters", {
     }
   )
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       server <- osrm_start_server(
@@ -444,6 +485,17 @@ test_that("osrm_start_server uses temp file by default for logging", {
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       server <- osrm_start_server(
@@ -479,6 +531,17 @@ test_that("osrm_start_server routes to console when verbose = TRUE", {
   captured_env <- new.env()
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
 
   with_mocked_bindings(
     {
@@ -517,6 +580,17 @@ test_that("osrm_start_server uses osrm.server.log_file option when set (characte
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       # Set custom log file option
@@ -554,6 +628,17 @@ test_that("osrm_start_server falls back to temp file when list option is used", 
   captured_env <- new.env()
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
 
   with_mocked_bindings(
     {
@@ -626,6 +711,17 @@ test_that("osrm_start_server reads log file on startup failure", {
     }
   )
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       # Use the mock log file directly via the option
@@ -660,6 +756,17 @@ test_that("verbose = TRUE takes precedence over osrm.server.log_file option", {
   captured_env <- new.env()
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
 
   with_mocked_bindings(
     {
@@ -701,6 +808,17 @@ test_that("osrm_start_server falls back to temp file for empty string log option
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       # Set empty string option - should fall back to temp file
@@ -741,6 +859,17 @@ test_that("osrm_start_server falls back to temp file for NA log option", {
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       # Set NA option - should fall back to temp file
@@ -779,6 +908,17 @@ test_that("osrm_start_server falls back to temp file for multiple paths log opti
   captured_env <- new.env()
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
 
   with_mocked_bindings(
     {
@@ -822,6 +962,17 @@ test_that("osrm_start_server falls back to temp file for numeric log option", {
   captured_env <- new.env()
   captured_env$captured <- list()
   MockProcess <- create_mock_process(captured_env)
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
 
   with_mocked_bindings(
     {
@@ -878,7 +1029,7 @@ test_that("osrm_start_server handles log file read errors gracefully during fail
               unlink(mock_log_file)
               log_deleted <<- TRUE
             }
-            FALSE  # Simulate immediate failure
+            FALSE # Simulate immediate failure
           },
           get_pid = function() 12345,
           kill = function() TRUE,
@@ -889,6 +1040,17 @@ test_that("osrm_start_server handles log file read errors gracefully during fail
       )
     }
   )
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
 
   with_mocked_bindings(
     {
@@ -912,7 +1074,7 @@ test_that("osrm_start_server handles log file read errors gracefully during fail
 test_that("osrm_start_server handles permission errors when reading log file", {
   skip_if_not_installed("processx")
   skip_on_cran()
-  skip_on_os("windows")  # Permission changes work differently on Windows
+  skip_on_os("windows") # Permission changes work differently on Windows
   skip_if(
     packageVersion("testthat") < "3.2.0",
     "Requires testthat >= 3.2.0 for object mocking"
@@ -934,7 +1096,7 @@ test_that("osrm_start_server handles permission errors when reading log file", {
 
       structure(
         list(
-          is_alive = function() FALSE,  # Simulate immediate failure
+          is_alive = function() FALSE, # Simulate immediate failure
           get_pid = function() 12345,
           kill = function() TRUE,
           wait = function(...) TRUE,
@@ -945,18 +1107,32 @@ test_that("osrm_start_server handles permission errors when reading log file", {
     }
   )
 
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
+
   with_mocked_bindings(
     {
       # Use the mock log file
       old_opt <- options(osrm.server.log_file = mock_log_file)
-      on.exit({
-        options(old_opt)
-        # Restore permissions so cleanup can work
-        if (file.exists(mock_log_file)) {
-          try(Sys.chmod(mock_log_file, mode = "644"), silent = TRUE)
-          unlink(mock_log_file)
-        }
-      }, add = TRUE)
+      on.exit(
+        {
+          options(old_opt)
+          # Restore permissions so cleanup can work
+          if (file.exists(mock_log_file)) {
+            try(Sys.chmod(mock_log_file, mode = "644"), silent = TRUE)
+            unlink(mock_log_file)
+          }
+        },
+        add = TRUE
+      )
 
       # Should still get an error message, even though log file is unreadable
       expect_error(
@@ -992,7 +1168,7 @@ test_that("osrm_start_server handles empty log file during error reporting", {
 
       structure(
         list(
-          is_alive = function() FALSE,  # Simulate immediate failure
+          is_alive = function() FALSE, # Simulate immediate failure
           get_pid = function() 12345,
           kill = function() TRUE,
           wait = function(...) TRUE,
@@ -1002,6 +1178,17 @@ test_that("osrm_start_server handles empty log file during error reporting", {
       )
     }
   )
+
+  state_env <- asNamespace("osrm.backend")$.osrm_state
+  orig_registry <- state_env$registry
+  orig_session_id <- state_env$session_id
+  on.exit({
+    state_env$registry <- orig_registry
+    state_env$session_id <- orig_session_id
+  }, add = TRUE)
+
+  state_env$registry <- list()
+  state_env$session_id <- "test-session"
 
   with_mocked_bindings(
     {

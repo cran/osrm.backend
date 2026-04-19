@@ -1,6 +1,8 @@
 #' Start an OSRM MLD/CH server with `osrm-routed`
 #'
 #' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' Launches an `osrm-routed` process pointing at a localized OSRM graph (either
 #' `.osrm.mldgr` for MLD or `.osrm.hsgr` for CH/CoreCH).
 #'
@@ -34,13 +36,16 @@
 #' @param verbosity Character; one of `"NONE","ERROR","WARNING","INFO","DEBUG"`
 #' @param trial Logical or integer; if `TRUE` or >0, quits after initialization (default: `FALSE`)
 #' @param ip Character; IP address to bind (default: `"0.0.0.0"`)
-#' @param port Integer; TCP port to listen on (default: `5001`)
+#' @param port Integer; TCP port to listen on (default: `5001`). The function checks
+#'   if this port is already in use by another running OSRM server (even from
+#'   another session) and will stop with an error if a conflict is detected.
 #' @param threads Integer; number of worker threads (default: `8`)
 #' @param shared_memory Logical; load graph from shared memory (default: `FALSE`)
 #' @param memory_file Character or NULL; DEPRECATED (behaves like `mmap`)
 #' @param mmap Logical; memory-map data files (default: `FALSE`)
 #' @param dataset_name Character or NULL; name of shared memory dataset
-#' @param algorithm Character or NULL; one of `"CH","CoreCH","MLD"`. If `NULL` (default), auto-selected based on file extension
+#' @param algorithm Character or NULL; one of `"MLD"`, `"CH"`, or `"CoreCH"` (case-insensitive).
+#'   If `NULL` (default), auto-selected based on file extension.
 #' @param max_viaroute_size Integer (default: `500`)
 #' @param max_trip_size Integer (default: `100`)
 #' @param max_table_size Integer (default: `100`)
@@ -48,13 +53,16 @@
 #' @param max_nearest_size Integer (default: `100`)
 #' @param max_alternatives Integer (default: `3`)
 #' @param max_matching_radius Integer; use `-1` for unlimited (default: `-1`)
+#' @param input_osm Character or NULL; path to the original OSM input file (for tracking purposes).
+#'   This parameter is typically used internally by [osrm_start()] to record the source data.
 #' @param echo_cmd Logical; echo command line to console before launch (default: `FALSE`)
 #' @param quiet Logical; when `TRUE`, suppresses package messages.
 #' @param verbose Logical; when `TRUE`, routes server stdout and stderr to the R
 #'   console for live debugging. Note: This can cause deadlocks in tight loops
 #'   if R is busy. Defaults to `FALSE`, which writes logs to a temporary file.
 #'
-#' @return A `processx::process` object for the running server (also registered internally).
+#' @return An OSRM job process (an `osrm_server` object inheriting from
+#'   `processx::process`) for the running server (also registered internally).
 #' @examples
 #' \donttest{
 #' if (identical(Sys.getenv("OSRM_EXAMPLES"), "true")) {
@@ -120,7 +128,8 @@ osrm_start_server <- function(
   max_matching_radius = -1L,
   quiet = FALSE,
   verbose = FALSE,
-  echo_cmd = FALSE
+  echo_cmd = FALSE,
+  input_osm = NULL
 ) {
   # Dependencies
   if (!requireNamespace("processx", quietly = TRUE)) {
@@ -155,7 +164,7 @@ osrm_start_server <- function(
   if (is.null(algorithm)) {
     algorithm <- if (ext == "mldgr") "MLD" else "CH"
   } else {
-    algorithm <- match.arg(algorithm, c("CH", "CoreCH", "MLD"))
+    algorithm <- .normalize_algorithm(algorithm)
     if (ext == "mldgr" && algorithm != "MLD") {
       stop(
         "Algorithm must be 'MLD' when using an .osrm.mldgr file",
@@ -285,6 +294,21 @@ osrm_start_server <- function(
   # Finally, add the graph prefix
   arguments <- c(arguments, prefix)
 
+  # --- PORT CONFLICT CHECK ---
+  # Check if the port is already used by a known OSRM server (local or external).
+  # This prevents confusing failures where osrm-routed exits immediately.
+  known_servers <- osrm_servers(include_all = TRUE)
+  if (nrow(known_servers) > 0) {
+    conflict <- known_servers[known_servers$port == as.integer(port) & known_servers$alive, ]
+    if (nrow(conflict) > 0) {
+      stop(sprintf(
+        "Port %d is already in use by another OSRM server (pid %d).",
+        as.integer(port),
+        conflict$pid[1]
+      ), call. = FALSE)
+    }
+  }
+
   # --- LOGGING CONFIGURATION ---
   # We prefer a temp file to prevent pipe deadlocks while keeping debug info.
 
@@ -328,7 +352,7 @@ osrm_start_server <- function(
         bytes_to_read <- min(file_size, n * bytes_per_line * 2)
 
         # Open file and seek to position
-        con <- file(file_path, "rb")
+        con <- suppressWarnings(file(file_path, "rb"))
         on.exit(close(con), add = TRUE)
 
         # Seek to estimated position (or beginning if file is small)
@@ -470,11 +494,19 @@ osrm_start_server <- function(
 
         if (length(log_content) > 0) {
           # Show the last 10 lines of the error log
+          last_lines <- utils::tail(log_content, 10)
           err_msg <- paste0(
             err_msg,
             "Last 10 log lines:\n",
-            paste(utils::tail(log_content, 10), collapse = "\n")
+            paste(last_lines, collapse = "\n")
           )
+          if (any(grepl("incompatible with this version of OSRM", last_lines, ignore.case = TRUE))) {
+            err_msg <- paste0(
+              err_msg,
+              "\n\nHint: The OSRM graph files are incompatible with the current OSRM binary version. ",
+              "Please rebuild the graph. If using `osrm_start()`, try adding `force_rebuild = TRUE`."
+            )
+          }
         } else {
           if (isTRUE(verbose) && is.null(log_file_path)) {
             err_msg <- paste0(
@@ -504,6 +536,22 @@ osrm_start_server <- function(
   }
 
   # --- Register the process for later management (stop by id/port/pid across session) ---
+  
+  # Try to detect profile from metadata
+  profile_detected <- NULL
+  meta_path <- file.path(dirname(osrm_path), "dataset.meta.json")
+  if (file.exists(meta_path)) {
+    meta <- tryCatch(jsonlite::read_json(meta_path), error = function(e) NULL)
+    if (!is.null(meta$profile)) profile_detected <- meta$profile
+  }
+
+  # Calculate center from input OSM PBF to store in registry/metadata
+  center_calculated <- NULL
+  if (!is.null(input_osm) && file.exists(input_osm)) {
+    ext <- tryCatch(.get_pbf_extent(input_osm), error = function(e) NULL)
+    if (!is.null(ext)) center_calculated <- ext$center
+  }
+
   # Best-effort: ignore errors if registry is unavailable for any reason.
   try(
     .osrm_register(
@@ -511,12 +559,26 @@ osrm_start_server <- function(
       port = port,
       prefix = prefix,
       algorithm = algorithm,
-      log = log_file_path
+      log = log_file_path,
+      input_osm = input_osm,
+      profile = profile_detected,
+      center = center_calculated
     ),
     silent = TRUE
   )
 
-  # Attach log path as attribute for user access
+  # Assign custom class and metadata for better UX in this session
+  class(osrm_server) <- c("osrm_server", class(osrm_server))
+  attr(osrm_server, "osrm_metadata") <- list(
+    port = port,
+    profile = profile_detected %||% getOption("osrm.profile", "car"),
+    algorithm = algorithm %||% (if (grepl("mldgr$", osrm_path)) "MLD" else "CH"),
+    path = osrm_path,
+    log = log_file_path,
+    center = center_calculated
+  )
+
+  # Attach log path as attribute for backward compatibility
   if (!is.null(log_file_path)) {
     attr(osrm_server, "log_path") <- log_file_path
   }

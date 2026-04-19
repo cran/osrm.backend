@@ -55,7 +55,7 @@ the base name are found alongside \code{input_osm}. Set to \code{TRUE} to overwr
 
 \item{dump_nbg_graph}{A logical. Adds \code{--dump-nbg-graph}; default \code{FALSE}.}
 
-\item{algorithm}{A string. One of \code{"mld"} (default) or \code{"ch"}.}
+\item{algorithm}{A string. One of \code{"MLD"} (default) or \code{"CH"} (case-insensitive).}
 
 \item{balance}{A numeric. Balance for \code{osrm-partition}; default \code{1.2}.}
 
@@ -87,6 +87,8 @@ An object of class \code{osrm_job} with the following elements:
 }
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 High-level wrapper that first runs \code{osrm-extract} on an OSM file
 to produce the base \code{.osrm} graph, then prepares it for routing via
 either the MLD pipeline (\code{osrm-partition} + \code{osrm-customize}) or the CH pipeline (\code{osrm-contract}).
