@@ -8,20 +8,24 @@ test_that("CH pipeline: extract -> contract works correctly", {
   input_osm_path <- file.path(tmp_dir, "test.osm.pbf")
   file.create(input_osm_path)
 
-  # Mock processx::run to create the expected files
   mock_run <- function(command, args, ...) {
-    # The first arg is the input path
     input_path <- args[1]
+    cmd <- tools::file_path_sans_ext(basename(command))
 
-    if (command == "osrm-extract") {
-      # Input is test.osm.pbf, create test.osrm.timestamp
+    if (cmd == "osrm-extract") {
       base <- sub("\\.osm\\.pbf$", "", input_osm_path)
       timestamp_file <- paste0(base, ".osrm.timestamp")
       file.create(timestamp_file)
-    } else if (command == "osrm-contract") {
+    } else if (cmd == "osrm-partition") {
+      partition_file <- paste0(input_path, ".partition")
+      file.create(partition_file)
+    } else if (cmd == "osrm-contract") {
       # Input is test.osrm (without extension), create test.osrm.hsgr
       hsgr_file <- paste0(input_path, ".hsgr")
       file.create(hsgr_file)
+    } else if (cmd == "osrm-customize") {
+      mldgr_file <- paste0(input_path, ".mldgr")
+      file.create(mldgr_file)
     }
     list(status = 0, stdout = "", stderr = "")
   }
@@ -58,17 +62,21 @@ test_that("MLD pipeline: extract -> partition -> customize works correctly", {
   file.create(input_osm_path)
 
   mock_run <- function(command, args, ...) {
-    # The first arg is the input path
     input_path <- args[1]
+    cmd <- tools::file_path_sans_ext(basename(command))
 
-    if (command == "osrm-extract") {
+    if (cmd == "osrm-extract") {
       base <- sub("\\.osm\\.pbf$", "", input_osm_path)
       timestamp_file <- paste0(base, ".osrm.timestamp")
       file.create(timestamp_file)
-    } else if (command == "osrm-partition") {
+    } else if (cmd == "osrm-partition") {
       partition_file <- paste0(input_path, ".partition")
       file.create(partition_file)
-    } else if (command == "osrm-customize") {
+    } else if (cmd == "osrm-contract") {
+      # Input is test.osrm (without extension), create test.osrm.hsgr
+      hsgr_file <- paste0(input_path, ".hsgr")
+      file.create(hsgr_file)
+    } else if (cmd == "osrm-customize") {
       mldgr_file <- paste0(input_path, ".mldgr")
       file.create(mldgr_file)
     }
@@ -108,14 +116,22 @@ test_that("Mixed pipelines fail with helpful errors: extract -> partition -> con
 
   mock_run <- function(command, args, ...) {
     input_path <- args[1]
+    cmd <- tools::file_path_sans_ext(basename(command))
 
-    if (command == "osrm-extract") {
+    if (cmd == "osrm-extract") {
       base <- sub("\\.osm\\.pbf$", "", input_osm_path)
       timestamp_file <- paste0(base, ".osrm.timestamp")
       file.create(timestamp_file)
-    } else if (command == "osrm-partition") {
+    } else if (cmd == "osrm-partition") {
       partition_file <- paste0(input_path, ".partition")
       file.create(partition_file)
+    } else if (cmd == "osrm-contract") {
+      # Input is test.osrm (without extension), create test.osrm.hsgr
+      hsgr_file <- paste0(input_path, ".hsgr")
+      file.create(hsgr_file)
+    } else if (cmd == "osrm-customize") {
+      mldgr_file <- paste0(input_path, ".mldgr")
+      file.create(mldgr_file)
     }
     list(status = 0, stdout = "", stderr = "")
   }
@@ -180,7 +196,8 @@ test_that("Mixed pipelines fail with helpful errors: extract -> customize (witho
   file.create(input_osm_path)
 
   mock_run <- function(command, args, ...) {
-    if (command == "osrm-extract") {
+    cmd <- tools::file_path_sans_ext(basename(command))
+    if (cmd == "osrm-extract") {
       base <- sub("\\.osm\\.pbf$", "", input_osm_path)
       timestamp_file <- paste0(base, ".osrm.timestamp")
       file.create(timestamp_file)

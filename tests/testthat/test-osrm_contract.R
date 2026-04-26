@@ -43,7 +43,7 @@ test_that("osrm_contract runs osrm-contract with expected arguments", {
     .package = "processx"
   )
 
-  expect_equal(captured$command, "osrm-contract")
+  expect_equal(tools::file_path_sans_ext(basename(captured$command)), "osrm-contract")
   expect_true("-t" %in% captured$args && "4" %in% captured$args)
   expect_true("-l" %in% captured$args && "DEBUG" %in% captured$args)
   expect_true(

@@ -43,7 +43,7 @@ test_that("osrm_customize runs osrm-customize with expected arguments", {
     .package = "processx"
   )
 
-  expect_equal(captured$command, "osrm-customize")
+  expect_equal(tools::file_path_sans_ext(basename(captured$command)), "osrm-customize")
   expect_true("-t" %in% captured$args && "2" %in% captured$args)
   expect_true("-l" %in% captured$args && "WARNING" %in% captured$args)
   expect_true(
