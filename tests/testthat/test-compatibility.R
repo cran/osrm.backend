@@ -1,0 +1,209 @@
+test_that("Cross-provider compatibility works for latest versions", {
+  skip_if_not(
+    identical(Sys.getenv("RUN_OSRM_LIVE_TESTS"), "true"),
+    "Live OSRM tests skipped"
+  )
+
+  test_map <- tempfile(fileext = ".osm.pbf")
+  download.file(
+    "https://download.geofabrik.de/europe/monaco-latest.osm.pbf",
+    test_map,
+    quiet = TRUE
+  )
+
+  old_repo <- options(osrm.backend.repository = "e-kotov/osrm-binaries")
+  on.exit(options(old_repo), add = TRUE)
+  test_versions <- osrm_check_available_versions(prereleases = FALSE)
+  options(osrm.backend.repository = "Project-OSRM/osrm-backend")
+  official_versions <- osrm_check_available_versions(prereleases = FALSE)
+  options(old_repo)
+
+  test_versions <- intersect(test_versions, official_versions)
+  skip_if_not(
+    length(test_versions) > 0,
+    "No versions available from both providers"
+  )
+
+  tested_any <- FALSE
+
+  for (ver in test_versions) {
+    dir_official <- tempfile()
+    dir.create(dir_official)
+
+    has_official <- tryCatch(
+      {
+        osrm_install(
+          version = ver,
+          osrm_binaries_provider = "official",
+          dest_dir = dir_official,
+          quiet = TRUE
+        )
+        TRUE
+      },
+      error = function(e) FALSE
+    )
+
+    dir_ours <- tempfile()
+    dir.create(dir_ours)
+    osrm_install(
+      version = ver,
+      osrm_binaries_provider = "default",
+      dest_dir = dir_ours,
+      quiet = TRUE
+    )
+
+    if (has_official) {
+      map_official <- tempfile(fileext = ".osm.pbf")
+      file.copy(test_map, map_official)
+
+      opts <- options(osrm.backend.path = dir_official)
+      job_official <- tryCatch(
+        osrm_prepare_graph(
+          map_official,
+          profile = osrm_find_profile("car.lua"),
+          verbosity = "NONE"
+        ),
+        error = identity
+      )
+      options(opts)
+      if (inherits(job_official, "error")) {
+        message(
+          sprintf(
+            "Skipping %s because official binaries cannot prepare the test graph: %s",
+            ver,
+            conditionMessage(job_official)
+          )
+        )
+        next
+      }
+
+      opts <- options(osrm.backend.path = dir_ours)
+      server_ours <- osrm_start(
+        job_official$osrm_job_artifact,
+        port = 5001,
+        verbosity = "NONE"
+      )
+      Sys.sleep(2)
+      res_ours <- jsonlite::fromJSON(
+        "http://127.0.0.1:5001/route/v1/driving/7.419,43.731;7.418,43.733"
+      )
+      server_ours$kill()
+      options(opts)
+      Sys.sleep(1)
+
+      map_ours <- tempfile(fileext = ".osm.pbf")
+      file.copy(test_map, map_ours)
+
+      opts <- options(osrm.backend.path = dir_ours)
+      job_ours <- osrm_prepare_graph(
+        map_ours,
+        profile = osrm_find_profile("car.lua"),
+        verbosity = "NONE"
+      )
+      options(opts)
+
+      opts <- options(osrm.backend.path = dir_official)
+      server_official <- osrm_start(
+        job_ours$osrm_job_artifact,
+        port = 5001,
+        verbosity = "NONE"
+      )
+      Sys.sleep(2)
+      res_official <- jsonlite::fromJSON(
+        "http://127.0.0.1:5001/route/v1/driving/7.419,43.731;7.418,43.733"
+      )
+      server_official$kill()
+      options(opts)
+
+      expect_equal(res_ours$routes$distance, res_official$routes$distance)
+      expect_equal(res_ours$routes$duration, res_official$routes$duration)
+      expect_equal(res_ours$routes$geometry, res_official$routes$geometry)
+      tested_any <- TRUE
+    }
+  }
+
+  skip_if_not(tested_any, "No cross-provider versions could prepare graphs")
+})
+
+test_that("OSRM darwin-x64 releases run under Rosetta on Apple Silicon", {
+  skip_if_not(
+    identical(Sys.getenv("RUN_OSRM_LIVE_TESTS"), "true"),
+    "Live OSRM tests skipped"
+  )
+
+  # Only run this test if we are actually on a macOS ARM64 platform
+  platform <- get_platform_info()
+  skip_if_not(
+    identical(platform$os, "darwin") && identical(platform$arch, "arm64"),
+    "Not on macOS arm64"
+  )
+
+  test_map <- tempfile(fileext = ".osm.pbf")
+  download.file(
+    "https://download.geofabrik.de/europe/monaco-latest.osm.pbf",
+    test_map,
+    quiet = TRUE
+  )
+
+  # Override arch to force download of x64 binary
+  old_arch <- options(osrm.backend.override_arch = "x64")
+  on.exit(options(old_arch), add = TRUE)
+
+  x64_versions <- osrm_check_available_versions(prereleases = TRUE)
+  skip_if_not(length(x64_versions) > 0, "No OSRM darwin-x64 releases available")
+
+  for (ver in x64_versions) {
+    message(sprintf("\n>>> ROSETTA TEST: OSRM %s darwin-x64 <<<", ver))
+
+    install_dir <- file.path(
+      tempdir(),
+      paste0("osrm_rosetta_", gsub("\\.", "_", ver))
+    )
+    if (dir.exists(install_dir)) {
+      unlink(install_dir, recursive = TRUE)
+    }
+    dir.create(install_dir, recursive = TRUE)
+    withr::defer(unlink(install_dir, recursive = TRUE))
+
+    osrm_install(
+      version = ver,
+      osrm_binaries_provider = "default",
+      dest_dir = install_dir,
+      path_action = "none",
+      quiet = TRUE
+    )
+
+    work_dir <- tempfile()
+    dir.create(work_dir)
+    withr::defer(unlink(work_dir, recursive = TRUE))
+    version_map <- file.path(work_dir, "monaco.osm.pbf")
+    file.copy(test_map, version_map)
+
+    withr::with_options(
+      list(osrm.backend.path = install_dir),
+      {
+        job_ours <- osrm_prepare_graph(
+          version_map,
+          profile = osrm_find_profile("car.lua"),
+          verbosity = "NONE"
+        )
+        port <- sample(15000:25000, 1)
+        server_ours <- osrm_start(
+          job_ours$osrm_job_artifact,
+          port = port,
+          verbosity = "NONE"
+        )
+        withr::defer(try(server_ours$kill(), silent = TRUE))
+        Sys.sleep(2)
+        res <- jsonlite::fromJSON(sprintf(
+          "http://127.0.0.1:%d/route/v1/driving/7.419,43.731;7.418,43.733",
+          port
+        ))
+        server_ours$kill()
+
+        expect_equal(res$code, "Ok")
+        expect_gt(nrow(res$routes), 0)
+      }
+    )
+  }
+})

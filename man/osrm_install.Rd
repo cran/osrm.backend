@@ -6,18 +6,30 @@
 \usage{
 osrm_install(
   version = "latest",
+  osrm_binaries_provider = c("default", "official"),
   dest_dir = NULL,
   force = FALSE,
   path_action = c("session", "project", "none"),
-  quiet = FALSE
+  quiet = FALSE,
+  check_tested = TRUE,
+  download_url = NULL,
+  file_path = NULL
 )
 }
 \arguments{
 \item{version}{A string specifying the OSRM version tag to install.
 Defaults to \code{"latest"}. Use \code{"latest"} to automatically find the most
-recent stable version (internally calls \code{\link[=osrm_check_latest_version]{osrm_check_latest_version()}}). Versions
-other than \code{v5.27.1}, \code{v6.0.0}, \code{v26.4.0} and \code{v26.4.1} will trigger a
-warning but are still attempted if binaries are available.}
+recent stable version (internally calls \code{\link[=osrm_check_latest_version]{osrm_check_latest_version()}}).
+Versions published in \code{e-kotov/osrm-binaries} and validated by this package
+are installed without warnings; other available versions are still attempted
+with a warning.}
+
+\item{osrm_binaries_provider}{A string specifying the provider to download binaries from.
+Defaults to \code{"default"}, which pulls from \code{"e-kotov/osrm-binaries"} and is the primary supported
+provider for this package. Set to \code{"official"} to download upstream binaries from
+\code{"Project-OSRM/osrm-backend"} where available.
+Advanced users can override the provider completely by setting the R option
+\code{osrm.backend.custom_repository} to a custom GitHub repository (e.g. \code{"my-user/my-repo"}).}
 
 \item{dest_dir}{A string specifying the directory where OSRM binaries should be
 installed. If \code{NULL} (the default), a user-friendly, persistent location is
@@ -32,14 +44,30 @@ existing installation is detected.}
 \item{path_action}{A string specifying how to handle the system \code{PATH}. One of:
 \itemize{
 \item \code{"session"} (default): Adds the OSRM bin directory to the \code{PATH}
-for the current R session only.
+for the rest of the current R session. This intentionally changes the
+session environment and is not reset automatically.
 \item \code{"project"}: Modifies the \code{.Rprofile} in the current project to set
-the \code{PATH} for all future sessions in that project.
+the \code{PATH} for future sessions in that project. Use \code{\link[=osrm_clear_path]{osrm_clear_path()}}
+to remove lines added by \code{osrm.backend}.
 \item \code{"none"}: Does not modify the \code{PATH}.
 }}
 
 \item{quiet}{A logical value. If \code{TRUE}, suppresses installer messages and
 warnings. Defaults to \code{FALSE}.}
+
+\item{check_tested}{A logical value. If \code{TRUE} (default), the function emits
+a status message pointing to the live integration-test badges that report
+currently validated OSRM versions. If \code{FALSE}, this status message is
+suppressed.}
+
+\item{download_url}{\strong{Advanced usage only.} A direct URL to a \code{.tar.gz} archive containing OSRM binaries.
+If provided, \code{version} and \code{osrm_binaries_provider} are ignored. The archive must be structured similarly
+to the default releases, containing the required OSRM executables (at least \code{osrm-routed} or \code{osrm-routed.exe})
+either directly at the root of the archive or nested under a single directory level. Supporting libraries and Lua profiles
+placed in the same folder will be installed alongside.}
+
+\item{file_path}{\strong{Advanced usage only.} A local file path to a \code{.tar.gz} archive containing OSRM binaries.
+If provided, skips downloading entirely. The archive structure expectations are identical to those of \code{download_url}.}
 }
 \value{
 The path to the installation directory.
@@ -47,18 +75,24 @@ The path to the installation directory.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-Downloads and installs pre-compiled binaries for the OSRM backend from the
-official GitHub releases. The function automatically detects the user's
-operating system and architecture to download the appropriate files. Only the
-latest v5 release (\code{v5.27.1}), \code{v6.0.0}, \code{v26.4.0} and \code{v26.4.1} were manually
-tested and are known to work well; other releases available on GitHub can be
-installed but are not guranteed to function correctly.
+Downloads and installs pre-compiled binaries for the OSRM backend. By
+default, \code{osrm_install()} uses the \code{e-kotov/osrm-binaries} release repository,
+which publishes immutable backend command-line archives primarily for this R
+package. The upstream \code{Project-OSRM/osrm-backend} release repository can still
+be used with \code{osrm_binaries_provider = "official"}.
+
+The function automatically detects the user's operating system and
+architecture to download the appropriate files. Validated versions are
+maintained by the package's live integration tests; see the OSRM live tests
+workflow and per-OS badges on GitHub Actions for the current validated
+versions. Other releases available on GitHub can be installed but are not
+guaranteed to function correctly.
 }
 \details{
 The function performs the following steps:
 \enumerate{
 \item Queries the GitHub API to find the specified release of
-\code{Project-OSRM/osrm-backend}.
+\code{e-kotov/osrm-binaries}.
 \item Identifies the correct binary (\code{.tar.gz} archive) for the user's OS
 (Linux, macOS, or Windows) and architecture (x64, arm64).
 \item Downloads the archive to a temporary location.
@@ -72,26 +106,22 @@ them alongside the binaries.
 session or project.
 }
 
-macOS users should note that upstream OSRM v6.x (and newer) binaries are
-built for macOS 15.0 (Sequoia, Darwin 24.0.0) or newer. \code{osrm_install()}
-automatically blocks v6+ installs on older macOS releases and, when
-\code{version = "latest"}, selects the most recent v5 build instead while warning
-about the requirement. Warnings include both the marketing version and Darwin
-kernel so you'll see messages like \verb{macOS 13 Ventura [Darwin 22.6.0]}.
-
-When installing OSRM v6.x or newer for Windows, the upstream release omits
-the Intel Threading Building Blocks (TBB) runtime and a compatible \code{bz2} DLL.
-To keep the executables runnable out of the box, \code{osrm_install()} fetches TBB
-from \href{https://github.com/uxlfoundation/oneTBB/releases/tag/v2022.3.0}{oneTBB
-v2022.3.0} and the BZip2 runtime from
-\href{https://github.com/philr/bzip2-windows/releases/tag/v1.0.8.0}{bzip2-windows
-v1.0.8.0}, verifying their SHA-256 checksums before extraction. Without these
-extra libraries, the OSRM v6+ binaries shipped for Windows cannot start.
-
-On macOS, OSRM v6.x and newer binaries also miss the bundled TBB runtime.
-The installer reuses the libraries from release \code{v5.27.1} to keep the
-binaries functional and patches their \code{libbz2} linkage using
-\code{install_name_tool} so that they load the system-provided BZip2 runtime.
+\subsection{Binary Providers}{
+The \code{osrm_binaries_provider} argument allows choosing between two release sources:
+\itemize{
+\item \strong{\code{"default"} (e-kotov/osrm-binaries)}: This provider is highly recommended and is the
+primary supported path for this R package. It offers standalone, immutable OSRM backend archives
+with predictable asset names, bundled runtime libraries where practical, SHA-256 verification,
+and no Node.js wrapper artifacts. It also provides native \code{linux-arm64} and \code{darwin-arm64}
+archives.
+\item \strong{\code{"official"} (Project-OSRM/osrm-backend)}: The upstream releases provided by the core
+OSRM team. These releases are intended primarily for upstream OSRM's Node.js distribution and are
+packaged as \code{node_osrm} archives. Their platform coverage and bundled runtime libraries may differ
+across OSRM versions, and recent upstream binaries may depend on runtime libraries from newer build
+environments. \code{osrm_install()} keeps compatibility code for this provider, but it is a secondary
+path rather than the package's main installation source.
+}
+}
 
 Power users (including package authors running cross-platform tests) can
 override the auto-detected platform by setting the R options

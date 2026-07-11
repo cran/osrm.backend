@@ -1,8 +1,20 @@
-# osrm.backend 0.3.1
+# osrm.backend 0.4.0
+
+## Major Changes
+
+* Now shipping self-built, self-contained, immutable OSRM releases for all supported platforms — macOS (Intel x86_64 & Apple Silicon arm64 — Mac computers), Linux (x86_64 & arm64), and Windows (x86_64). Binaries are bundled with required runtime libraries (e.g., Intel TBB), fully tested and validated by the package maintainer and available via the default binaries provider to simplify secure installs.
+* Introduced `osrm_binaries_provider` argument to `osrm_install()` (default: "default"). This automatically fetches static, highly-compatible binaries built directly by this package's maintainer (`e-kotov/osrm-binaries`). These binaries provide native arm64 and x86_64 builds where available across Linux, macOS (Apple Silicon and Intel) and Windows, and bundle required runtime libraries (e.g., Intel TBB) to avoid legacy runtime hacks and reduce overhead by dropping unnecessary NodeJS wrappers. The original upstream binaries remain fully supported via `osrm_binaries_provider = "official"`.
+* Added `download_url` and `file_path` parameters to `osrm_install()` to support advanced/manual installations from a supplied archive URL or a local tarball path. These parameters are intended for advanced users who need explicit control over the installation source.
+* Switched binary integrity verification to use GitHub release asset digests first, with `checksums.txt` as a fallback, ensuring installation security without requiring R package updates when new binary builds are released.
+* Marked all currently published immutable OSRM binary releases through `v26.7.3` as validated by `osrm.backend`.
 
 ## Bug fixes
 
+* Heavily optimized GitHub API rate limit handling during installation. When fetching known versions from the default provider, the package now bypasses API checks entirely by directly constructing asset URLs.
+* Increased stability of the live integration tests against custom routing instances and proxy-blocked networks.
 * Fixes for install process of OSRM binaries v26+ on Windows.
+* Added weekly cross-provider integration tests (`tests/testthat/test-compatibility.R`) to automatically verify that custom binaries produce identical routing results and are fully cross-compatible with official releases.
+
 
 # osrm.backend 0.3.0
 

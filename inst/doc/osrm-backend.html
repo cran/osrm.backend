@@ -348,7 +348,7 @@ routes</h1>
 <pre><code>## Data: (c) OpenStreetMap contributors, ODbL 1.0 - http://www.openstreetmap.org/copyright</code></pre>
 <pre><code>## Routing: OSRM - http://project-osrm.org/</code></pre>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">library</span>(sf)</span></code></pre></div>
-<pre><code>## Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE</code></pre>
+<pre><code>## Linking to GEOS 3.14.1, GDAL 3.13.1, PROJ 9.8.1; sf_use_s2() is TRUE</code></pre>
 <div id="create-a-temporary-directory-and-copy-example-osm-pbf-file-into-it" class="section level1">
 <h1>Create a temporary directory and copy example OSM PBF file into
 it</h1>
@@ -365,7 +365,7 @@ OSRM Backend binaries are installed, and if not, it will install the
 latest version, it will also automatically prepare the routing graph
 from the OSM PBF file if not already done and start the server. If any
 of the steps are unnecessary, it will skip them, so running this
-funciton will not lead to re-downloading of OSRM binaries or
+function will not lead to re-downloading of OSRM binaries or
 re-processing of the OSM PBF file if already done.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">osrm_start</span>(osrm_temp_dir, <span class="at">verbose =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 <blockquote>

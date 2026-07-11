@@ -20,6 +20,19 @@ test_that("Live installation and basic routing works for all supported OSRM vers
   
   versions_to_test <- unique(c(latest_v5, v6_plus_tags))
   
+  # Collect results for the badge
+  # Read existing results if they exist (initialized by GHA)
+  # Use absolute path from env var for CI reliability
+  results_file <- Sys.getenv("OSRM_TEST_RESULTS_FILE", "test_results.rds")
+  
+  test_results <- if (file.exists(results_file)) {
+    readRDS(results_file)
+  } else {
+    structure(rep(FALSE, length(versions_to_test)), names = versions_to_test)
+  }
+  
+  on.exit(saveRDS(test_results, results_file), add = TRUE)
+  
   # For Mac, we can only test v6+ if we are on Sequoia (Darwin 24)
   is_macos <- identical(tolower(Sys.info()[["sysname"]]), "darwin")
   darwin_version <- NA_integer_
@@ -50,7 +63,13 @@ test_that("Live installation and basic routing works for all supported OSRM vers
     
     # We use path_action="none" to avoid messing with .Rprofile in CI
     # This MUST succeed
-    install_path <- osrm_install(version = ver, dest_dir = test_dir, path_action = "none", quiet = FALSE)
+    install_path <- osrm_install(
+      version = ver,
+      dest_dir = test_dir,
+      path_action = "none",
+      quiet = FALSE,
+      check_tested = FALSE
+    )
     
     # 2. VERIFY BINARIES
     routed_bin <- list.files(install_path, pattern = "^osrm-routed(\\.exe)?$", full.names = TRUE)
@@ -70,6 +89,14 @@ test_that("Live installation and basic routing works for all supported OSRM vers
     old_opt <- options(osrm.routed.exec = routed_bin)
     withr::defer(options(old_opt))
     
+    # Optional debug for Windows
+    if (.Platform$OS.type == "windows") {
+      extract_bin <- list.files(install_path, pattern = "^osrm-extract(\\.exe)?$", full.names = TRUE)
+      if (length(extract_bin) > 0) {
+        system(paste("dumpbin /dependents", shQuote(extract_bin[1])))
+      }
+    }
+    
     # This MUST succeed
     graph <- osrm_prepare_graph(tmp_pbf, threads = 1L, quiet = FALSE)
     
@@ -84,11 +111,49 @@ test_that("Live installation and basic routing works for all supported OSRM vers
     # 5. LIVENESS CHECK
     expect_true(srv$is_alive())
     
+    # 5.1 ROUTING TEST (API level)
+    # This uses httr2 (an Import) to verify the server is actually responding to requests.
+    url <- sprintf("http://localhost:%d/route/v1/car/-49.28,-25.44;-49.26,-25.42?overview=false", port)
+    resp <- httr2::request(url) %>% httr2::req_perform()
+    expect_equal(httr2::resp_status(resp), 200)
+    
+    body <- httr2::resp_body_json(resp)
+    expect_equal(body$code, "Ok")
+    expect_gt(length(body$routes), 0)
+    
+    # 5.2 ROUTING TEST (osrm package level)
+    if (requireNamespace("osrm", quietly = TRUE)) {
+      withr::with_options(
+        list(
+          osrm.server = sprintf("http://localhost:%d/", port),
+          osrm.profile = "car"
+        ),
+        {
+          # Run a simple route
+          # Points in Curitiba (cur.osm.pbf)
+          route <- osrm::osrmRoute(
+            src = c(-49.28, -25.44),
+            dst = c(-49.26, -25.42),
+            overview = "full"
+          )
+          
+          # Basic validation of routing response
+          expect_s3_class(route, "sf")
+          expect_gt(nrow(route), 0)
+          expect_gt(route$distance, 0)
+          expect_gt(route$duration, 0)
+        }
+      )
+    }
+    
     # 6. STOP SERVER
     expect_message(
       stopped <- osrm_stop(srv),
       "Stopped OSRM server"
     )
     expect_false(srv$is_alive())
+    
+    # All steps passed for this version
+    test_results[ver] <- TRUE
   }
 })
