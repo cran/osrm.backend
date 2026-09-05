@@ -1,7 +1,7 @@
-c3d75b6ecd0ff5449a02bad9e1fe55fc *DESCRIPTION
+701dde9235413d1faa8dcb559e97a990 *DESCRIPTION
 415d705805f7f38844f7d13611c0af32 *LICENSE
 14cc900bb458d766c364202d8dae3d0c *NAMESPACE
-62a5ef60071b48756f5b2af49c9694e1 *NEWS.md
+506f8977a471642075737d41d8e7a65f *NEWS.md
 d7a54580ba6b0c63cf4b2782267b6f43 *R/osrm.backend-package.R
 e40e5ca6c6a560896889b93daeda4d9a *R/osrm_cleanup.R
 df765da18544d13c4d50e5d576b9be0a *R/osrm_contract.R
@@ -10,7 +10,7 @@ d9b68c06ae0615c924be0262c83744c9 *R/osrm_customize.R
 5c22b554999d93c704b260914e951ff4 *R/osrm_find_profile.R
 2dcbcba922af5a829024be1643f1b253 *R/osrm_gui.R
 952f29829661c485e347fe1ad8e369ed *R/osrm_gui_internals.R
-12bfce6d52f2c1ef8929947646968027 *R/osrm_install.R
+ef18347449a38d90ff0e4e7a6bb7c411 *R/osrm_install.R
 06fb1cc578f7c844c9525d4288fb170e *R/osrm_partition.R
 ca19c565561f560159e7279ef7a7b1f5 *R/osrm_prepare_graph.R
 40e4d61490096f4eaa8dfacf3ac4bf11 *R/osrm_server_registry.R
@@ -22,13 +22,13 @@ c94351d374432155a5e221799d99fed1 *R/osrm_start_server.R
 ce51406f771981974394d5720571ff02 *R/osrm_which.R
 43b4401d76e8805e8b73afacd554830d *R/pbf_header_reader.R
 eaaf12f569a812d2834c700ab38f73ec *R/utils.R
-3c69a247368e8aa69fc0a0c6ff874465 *README.md
+5592d6c2e14fb41565cea2048c5231f9 *README.md
 958bc98d255ab36301bb1c1f4405d3ab *build/vignette.rds
 d3d50180fe1b218dbb8c4d20fed270c0 *inst/CITATION
 ef3ce3b813637b9ebb36df284e6eb046 *inst/COPYRIGHTS
 038e3c979d4a4f92da7204f783924ed8 *inst/doc/osrm-backend.R
 0a86577e8696352699e5680bc6337af1 *inst/doc/osrm-backend.Rmd
-08a990aad71a5c7c2dbe895c06f1df4b *inst/doc/osrm-backend.html
+eeafb15120252b3dc2a12d5b527d0a9a *inst/doc/osrm-backend.html
 c28f610fe0c9dab856a3b1fa8264d42c *inst/extdata/cur.osm.pbf
 b8e91bcda4cd8a3779446141bcbb6ad1 *man/figures/example-route.png
 391f696f961e28914508628a7af31b74 *man/figures/lifecycle-deprecated.svg
@@ -47,7 +47,7 @@ c422b435b978c9641b7a77aa70867c93 *man/osrm_contract.Rd
 66e218dfe94d26138ca877b38fbb98cd *man/osrm_find_profile.Rd
 edbea0cda0b30122760cefc298397138 *man/osrm_get_server_profile.Rd
 16396b5f19845c955abc9a234f364341 *man/osrm_gui.Rd
-836217f32c6ea1a49d4b6953fa6612f2 *man/osrm_install.Rd
+a4657843e5a019a17a1f48ab1b9bdcac *man/osrm_install.Rd
 8f2d23a6cdb59deaaa1e68ad742359ea *man/osrm_partition.Rd
 247799c370b3f28c67025d33ad5391e9 *man/osrm_prepare_graph.Rd
 e3fedde4d08ac75033b9cea8b676a9c1 *man/osrm_servers.Rd
@@ -68,11 +68,11 @@ d503d1bfdf6099549b8e64fec4b4f66e *tests/testthat/setup-osrm.R
 a3ddf6e5ac3f128c572d27d2f3fb3771 *tests/testthat/test-osrm_customize.R
 fba586f30e189346ebd2858644d9ec5c *tests/testthat/test-osrm_extract.R
 4ab98f55a0966e770412bc22c1810e11 *tests/testthat/test-osrm_gui.R
-312ffae745c02cf1a84fac1f3758acfd *tests/testthat/test-osrm_install.R
+68c5d33434c329fc5c055b21bbfd44db *tests/testthat/test-osrm_install.R
 1175955f7b621d0c929cfa938306f826 *tests/testthat/test-osrm_partition.R
 8ae658a590c334a4ab9c9eba0d3bbbf4 *tests/testthat/test-osrm_pipelines.R
 b6b3faf8a1878c95022641ca38360c96 *tests/testthat/test-osrm_prepare_graph.R
-11b117c5d592cd07d5be4f747f84c080 *tests/testthat/test-osrm_server.R
+c13570c57af281216e3ff7d148643d59 *tests/testthat/test-osrm_server.R
 fa82bdaa8d7debc17817afbfbf10a4c2 *tests/testthat/test-osrm_server_additions.R
 a6a61aac36213f40794b78df494f8f5d *tests/testthat/test-osrm_server_class.R
 e32542fbfd8205acf07e8a21ae4687a1 *tests/testthat/test-osrm_start.R
@@ -82,5 +82,5 @@ bece9def3f6e442d23e57075c92ba148 *tests/testthat/test-pbf_header_reader.R
 2e6ef9b667f05dff14d87d37505b2dfd *tests/testthat/test-pipeline-conflicts.R
 3d6e972da6acc20570a338a50a6dd6e4 *tests/testthat/test_results.rds
 723ee3b3addb2f68a44c219fc9af2af7 *vignettes/binary-providers.qmd
-1ee47d2164f1701b7a2caebcf0c902ac *vignettes/generated-tested-versions.md
+b8b775d9a3f97168b65cc6dc386969f9 *vignettes/generated-tested-versions.md
 0a86577e8696352699e5680bc6337af1 *vignettes/osrm-backend.Rmd
